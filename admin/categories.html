@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Categories | WEEKLY JANOON Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="../assets/js/firebase-config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin-layout.js"></script>
+<script>
+renderAdminShell("Categories");
+
+function row(c){
+  const key = c.slug || c.id;
+  return `
+    <tr>
+      <td class="title-cell"><span class="t">${c.name}</span><span class="s">/category.html?cat=${key}</span></td>
+      <td>${key}</td>
+      <td>${c.showInNav===false ? '<span class="badge draft">Hidden</span>' : '<span class="badge published">Visible in Menu</span>'}</td>
+      <td style="white-space:nowrap;">
+        <button class="a-btn secondary sm" data-edit="${key}">Edit</button>
+        <button class="a-btn danger sm" data-del="${key}">Delete</button>
+      </td>
+    </tr>
+  `;
+}
+
+let ALL = [];
+
+function renderTable(){
+  document.getElementById("catTbody").innerHTML = ALL.length
+    ? ALL.map(row).join("")
+    : `<tr class="empty-row"><td colspan="4">No categories yet.</td></tr>`;
+
+  document.querySelectorAll("[data-edit]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const c = ALL.find(x=>(x.slug||x.id)===btn.dataset.edit);
+      openForm(c);
+    });
+  });
+  document.querySelectorAll("[data-del]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if (!confirm("Delete this category? Existing articles in it will remain but won't show a menu link.")) return;
+      await WJ.admin.deleteCategory(btn.dataset.del);
+      toast("Category deleted.");
+      await load();
+    });
+  });
+}
+
+function openForm(c){
+  document.getElementById("formTitle").textContent = c ? "Edit Category" : "Add Category";
+  document.getElementById("cName").value = c?.name || "";
+  document.getElementById("cSlug").value = c?.slug || c?.id || "";
+  document.getElementById("cSlug").disabled = !!c;
+  document.getElementById("cShow").checked = c ? c.showInNav !== false : true;
+  document.getElementById("catForm").dataset.editKey = c ? (c.slug||c.id) : "";
+  document.getElementById("catFormCard").style.display = "block";
+  document.getElementById("cName").focus();
+}
+
+function closeForm(){
+  document.getElementById("catFormCard").style.display = "none";
+  document.getElementById("catForm").reset();
+}
+
+async function load(){
+  ALL = await WJ.admin.listCategories();
+  renderTable();
+}
+
+function init(){
+  const content = document.getElementById("adminContent");
+  content.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0">Categories</h3>
+      <button class="a-btn" id="addCatBtn">+ Add Category</button>
+    </div>
+
+    <div class="a-card" id="catFormCard" style="display:none;">
+      <h3 id="formTitle">Add Category</h3>
+      <form id="catForm">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Category Name (Urdu) *</label>
+            <input type="text" id="cName" required style="direction:rtl;font-family:'Noto Naskh Arabic',serif">
+          </div>
+          <div class="form-row">
+            <label>Slug (URL, English, no spaces) *</label>
+            <input type="text" id="cSlug" required placeholder="e.g. local-news">
+          </div>
+        </div>
+        <label class="checkbox-row"><input type="checkbox" id="cShow" checked> Show in main navigation menu</label>
+        <div style="display:flex;gap:10px;margin-top:14px;">
+          <button type="submit" class="a-btn">Save Category</button>
+          <button type="button" class="a-btn secondary" id="cancelCatBtn">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="a-card">
+      <table class="a-table">
+        <thead><tr><th>Name</th><th>Slug</th><th>Visibility</th><th>Actions</th></tr></thead>
+        <tbody id="catTbody"><tr class="empty-row"><td colspan="4">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById("addCatBtn").addEventListener("click", ()=> openForm(null));
+  document.getElementById("cancelCatBtn").addEventListener("click", closeForm);
+  document.getElementById("catForm").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const editKey = e.target.dataset.editKey;
+    const data = {
+      name: document.getElementById("cName").value.trim(),
+      slug: document.getElementById("cSlug").value.trim().toLowerCase().replace(/\s+/g,"-"),
+      showInNav: document.getElementById("cShow").checked
+    };
+    try{
+      await WJ.admin.saveCategory(data, editKey || undefined);
+      toast("Category saved.");
+      closeForm();
+      await load();
+    }catch(err){
+      toast("Save failed: " + err.message, true);
+    }
+  });
+
+  load();
+}
+
+requireAuth(init);
+</script>
+</body>
+</html>

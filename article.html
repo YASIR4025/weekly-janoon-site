@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">خبر | WEEKLY JANOON</title>
+<meta name="description" id="pageDesc" content="">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main id="main">
+  <div class="container">
+    <div id="articleMount">
+      <div class="loading-state">خبر لوڈ ہو رہی ہے…</div>
+    </div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+function shareRow(a){
+  const url = encodeURIComponent(location.href);
+  const text = encodeURIComponent(a.title);
+  return `
+    <div class="share-row">
+      <span>اس خبر کو شیئر کریں:</span>
+      <a class="share-btn" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=${url}" aria-label="Facebook">f</a>
+      <a class="share-btn" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?url=${url}&text=${text}" aria-label="Twitter">X</a>
+      <a class="share-btn" target="_blank" rel="noopener" href="https://api.whatsapp.com/send?text=${text}%20${url}" aria-label="WhatsApp">W</a>
+    </div>
+  `;
+}
+
+async function init(){
+  renderFooter();
+  const params = new URLSearchParams(location.search);
+  const slug = params.get("slug");
+  const a = slug ? await WJ.db.getArticleBySlug(slug) : null;
+  renderHeader(a ? a.category : null);
+
+  const mount = document.getElementById("articleMount");
+  if (!a){
+    mount.innerHTML = `<div class="empty-state">یہ خبر دستیاب نہیں ہے، ممکن ہے اسے حذف کر دیا گیا ہو۔<br><a href="index.html" class="btn" style="margin-top:14px;display:inline-block;padding:8px 18px;background:var(--maroon);color:#fff">صفحہ اوّل پر واپس جائیں</a></div>`;
+    return;
+  }
+
+  document.title = `${a.title} | WEEKLY JANOON`;
+  document.getElementById("pageDesc").setAttribute("content", a.excerpt||"");
+
+  const related = await WJ.db.getArticles({category:a.category, limit:4, excludeId:a.id});
+  const paragraphs = Array.isArray(a.content) ? a.content : [a.content||a.excerpt||""];
+
+  mount.innerHTML = `
+    <p class="breadcrumb"><a href="index.html">صفحہ اوّل</a> / <a href="category.html?cat=${a.category}">${WJ.catName(a.category)}</a></p>
+    <article class="article-detail">
+      <div class="kicker">${WJ.catName(a.category)}</div>
+      <h1>${a.title}</h1>
+      <div class="story-meta">
+        <span>✍️ ${a.author||"نیوز ڈیسک"}</span>
+        <span>📅 ${WJ.formatDate(a.date)}</span>
+        <span>👁 ${a.views||0} مناظر</span>
+      </div>
+      <img class="lead-image" src="${a.image}" alt="${a.title}">
+      <div class="caption">تصویر: نمائندہ ویکلی جنون</div>
+      <div class="article-body">
+        ${paragraphs.map(p=>`<p>${p}</p>`).join("")}
+      </div>
+      ${shareRow(a)}
+    </article>
+
+    ${related.length ? `
+    <div class="related-strip">
+      <div class="section-head"><h2>ملتی جلتی خبریں</h2></div>
+      <div class="article-grid">
+        ${related.map(r=>`
+          <article class="article-card">
+            <a href="article.html?slug=${r.slug}"><img src="${r.image}" alt="${r.title}"></a>
+            <div class="card-body">
+              <div class="card-cat">${WJ.catName(r.category)}</div>
+              <h3><a href="article.html?slug=${r.slug}">${r.title}</a></h3>
+              <div class="story-meta">${WJ.formatDate(r.date)}</div>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </div>` : ""}
+  `;
+}
+init();
+</script>
+</body>
+</html>

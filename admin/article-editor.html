@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Article Editor | WEEKLY JANOON Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="../assets/js/firebase-config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin-layout.js"></script>
+<script>
+renderAdminShell("Article Editor");
+
+const params = new URLSearchParams(location.search);
+const editId = params.get("id");
+let currentImageData = null; // holds uploaded image URL/dataURL
+let paragraphCount = 0;
+
+function paragraphBlock(text){
+  paragraphCount++;
+  const pid = "p" + paragraphCount;
+  const div = document.createElement("div");
+  div.className = "paragraph-block";
+  div.dataset.pid = pid;
+  div.innerHTML = `
+    <button type="button" class="remove-p" data-remove="${pid}">✕ Remove</button>
+    <textarea placeholder="Paragraph text (Urdu)...">${text||""}</textarea>
+  `;
+  return div;
+}
+
+function addParagraph(text){
+  const wrap = document.getElementById("paragraphsWrap");
+  const block = paragraphBlock(text);
+  wrap.appendChild(block);
+  block.querySelector("[data-remove]").addEventListener("click", ()=>{
+    if (wrap.children.length<=1){ toast("At least one paragraph is required.", true); return; }
+    block.remove();
+  });
+}
+
+function collectParagraphs(){
+  return [...document.querySelectorAll("#paragraphsWrap textarea")]
+    .map(t=>t.value.trim()).filter(Boolean);
+}
+
+function buildForm(article){
+  const content = document.getElementById("adminContent");
+  content.innerHTML = `
+    <form id="articleForm">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="margin:0">${editId ? "Edit Article" : "Add News Article"}</h3>
+        <div style="display:flex;gap:10px">
+          <a class="a-btn secondary" href="articles.html">Cancel</a>
+          <button type="submit" name="action" value="draft" class="a-btn secondary">Save as Draft</button>
+          <button type="submit" name="action" value="publish" class="a-btn">Publish</button>
+        </div>
+      </div>
+
+      <div class="a-grid cols-2">
+        <div>
+          <div class="a-card">
+            <div class="form-row rtl">
+              <label>Headline (Title) *</label>
+              <input type="text" id="fTitle" required value="${article?.title||''}" placeholder="خبر کی سرخی یہاں لکھیں">
+            </div>
+            <div class="form-row rtl">
+              <label>Excerpt / Short Description *</label>
+              <textarea id="fExcerpt" rows="2" required placeholder="مختصر تفصیل...">${article?.excerpt||''}</textarea>
+            </div>
+            <div class="form-row">
+              <label>Article Content (paragraphs)</label>
+              <div id="paragraphsWrap"></div>
+              <button type="button" class="a-btn secondary sm" id="addParaBtn">+ Add Paragraph</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="a-card">
+            <div class="form-row">
+              <label>Category *</label>
+              <select id="fCategory" required>
+                ${WJ.CATEGORIES.map(c=>`<option value="${c.slug}" ${article?.category===c.slug?'selected':''}>${c.name}</option>`).join("")}
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Author</label>
+              <input type="text" id="fAuthor" value="${article?.author||'News Desk'}">
+            </div>
+            <div class="form-row">
+              <label>Publish Date</label>
+              <input type="date" id="fDate" value="${article?.date || new Date().toISOString().slice(0,10)}">
+            </div>
+            <div class="checkbox-group">
+              <label class="checkbox-row"><input type="checkbox" id="fBreaking" ${article?.breaking?'checked':''}> Breaking News</label>
+              <label class="checkbox-row"><input type="checkbox" id="fFeatured" ${article?.featured?'checked':''}> Featured Story</label>
+              <label class="checkbox-row"><input type="checkbox" id="fTrending" ${article?.trending?'checked':''}> Trending</label>
+            </div>
+          </div>
+
+          <div class="a-card">
+            <div class="form-row">
+              <label>Featured Image *</label>
+              <input type="file" id="fImageFile" accept="image/*">
+              <img id="imgPreview" class="img-preview" src="${article?.image||''}" style="${article?.image?'':'display:none'}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  `;
+
+  document.getElementById("addParaBtn").addEventListener("click", ()=> addParagraph(""));
+  const paras = Array.isArray(article?.content) && article.content.length ? article.content : [""];
+  paras.forEach(p => addParagraph(p));
+
+  currentImageData = article?.image || null;
+  document.getElementById("fImageFile").addEventListener("change", async (e)=>{
+    const file = e.target.files[0];
+    if (!file) return;
+    toast("Uploading image...");
+    try{
+      const url = await WJ.admin.uploadImage(file);
+      currentImageData = url;
+      const preview = document.getElementById("imgPreview");
+      preview.src = url;
+      preview.style.display = "block";
+      toast("Image uploaded.");
+    }catch(err){
+      toast("Image upload failed: " + err.message, true);
+    }
+  });
+
+  document.getElementById("articleForm").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const action = e.submitter ? e.submitter.value : "draft";
+    const title = document.getElementById("fTitle").value.trim();
+    const excerpt = document.getElementById("fExcerpt").value.trim();
+    if (!title || !excerpt){ toast("Title and excerpt are required.", true); return; }
+    if (!currentImageData){ toast("Please upload a featured image.", true); return; }
+
+    const data = {
+      title,
+      slug: article?.slug || WJ.slugify(title),
+      excerpt,
+      content: collectParagraphs(),
+      category: document.getElementById("fCategory").value,
+      author: document.getElementById("fAuthor").value.trim() || "News Desk",
+      date: document.getElementById("fDate").value,
+      image: currentImageData,
+      breaking: document.getElementById("fBreaking").checked,
+      featured: document.getElementById("fFeatured").checked,
+      trending: document.getElementById("fTrending").checked,
+      status: action === "publish" ? "published" : "draft"
+    };
+
+    try{
+      await WJ.admin.saveArticle(data, editId || undefined);
+      toast(action==="publish" ? "Article published." : "Draft saved.");
+      setTimeout(()=> location.href = "articles.html", 500);
+    }catch(err){
+      toast("Save failed: " + err.message, true);
+    }
+  });
+}
+
+async function init(){
+  let article = null;
+  if (editId) article = await WJ.admin.getArticle(editId);
+  buildForm(article);
+}
+
+requireAuth(init);
+</script>
+</body>
+</html>

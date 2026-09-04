@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ای پیپر | WEEKLY JANOON</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main id="main">
+  <div class="container">
+    <p class="breadcrumb"><a href="index.html">صفحہ اوّل</a> / ای پیپر</p>
+    <div class="section-head" style="margin-top:6px">
+      <h2>ای پیپر — ویکلی جنون</h2>
+    </div>
+
+    <div class="epaper-hero" id="epaperHero">
+      <div class="loading-state">ای پیپر لوڈ ہو رہا ہے…</div>
+    </div>
+
+    <div class="section-head">
+      <h2>پرانے شمارے (آرکائیو)</h2>
+    </div>
+    <ul class="epaper-archive-list" id="archiveList"></ul>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+let epapers = [];
+let currentEdition = 0;
+let currentPage = 0;
+
+function renderViewer(){
+  const hero = document.getElementById("epaperHero");
+  if (!epapers.length){
+    hero.innerHTML = `<div class="empty-state" style="width:100%">ابھی تک کوئی ای پیپر شائع نہیں ہوا۔</div>`;
+    return;
+  }
+  const ed = epapers[currentEdition];
+  const totalPages = ed.pages.length;
+  hero.innerHTML = `
+    <div class="epaper-viewer">
+      <div class="page-frame" style="background-image:url('${ed.pages[currentPage]}')"></div>
+      <div class="epaper-nav">
+        <button id="prevPage" ${currentPage===0?"disabled":""}>&rarr; پچھلا صفحہ</button>
+        <span>صفحہ ${currentPage+1} / ${totalPages}</span>
+        <button id="nextPage" ${currentPage===totalPages-1?"disabled":""}>اگلا صفحہ &larr;</button>
+      </div>
+      <p style="margin-top:14px;font-family:'Inter',sans-serif;font-size:12.5px;color:var(--ink-soft)">
+        شمارہ: ${ed.title} — ${WJ.formatDate(ed.date)}
+      </p>
+      <a href="${ed.pages[currentPage]}" download class="btn" style="display:inline-block;margin-top:10px;background:var(--maroon);color:#fff;padding:8px 18px;font-family:'Inter',sans-serif;font-size:13px;">صفحہ ڈاؤن لوڈ کریں</a>
+    </div>
+    <div class="epaper-side">
+      <h3>ایڈیشن منتخب کریں</h3>
+      <ul class="epaper-archive-list" id="editionList"></ul>
+    </div>
+  `;
+  document.getElementById("prevPage").addEventListener("click", ()=>{ currentPage=Math.max(0,currentPage-1); renderViewer(); });
+  document.getElementById("nextPage").addEventListener("click", ()=>{ currentPage=Math.min(totalPages-1,currentPage+1); renderViewer(); });
+
+  const editionList = document.getElementById("editionList");
+  editionList.innerHTML = epapers.map((e,i)=>`
+    <li>
+      <span>${e.title} — ${WJ.formatDate(e.date)}</span>
+      <button class="dl" style="background:none;border:1px solid var(--maroon);color:var(--maroon);padding:4px 10px;font-family:'Inter',sans-serif;font-size:12px;" data-i="${i}">دیکھیں</button>
+    </li>
+  `).join("");
+  editionList.querySelectorAll("button").forEach(b=>{
+    b.addEventListener("click", ()=>{ currentEdition=parseInt(b.dataset.i,10); currentPage=0; renderViewer(); });
+  });
+}
+
+function renderArchive(){
+  const list = document.getElementById("archiveList");
+  list.innerHTML = epapers.map((e,i)=>`
+    <li>
+      <span>📰 ${e.title} — ${WJ.formatDate(e.date)} (${e.pages.length} صفحات)</span>
+      <a class="dl" href="#" data-i="${i}">پورا ایڈیشن دیکھیں</a>
+    </li>
+  `).join("");
+  list.querySelectorAll("a.dl").forEach(a=>{
+    a.addEventListener("click", (ev)=>{
+      ev.preventDefault();
+      currentEdition = parseInt(a.dataset.i,10);
+      currentPage = 0;
+      renderViewer();
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
+  });
+}
+
+async function init(){
+  renderHeader();
+  renderFooter();
+  epapers = await WJ.db.getEpapers();
+  renderViewer();
+  renderArchive();
+}
+init();
+</script>
+</body>
+</html>

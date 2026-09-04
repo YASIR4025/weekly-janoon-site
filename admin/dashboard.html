@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | WEEKLY JANOON Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="../assets/js/firebase-config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin-layout.js"></script>
+<script>
+renderAdminShell("Dashboard");
+
+function statCard(num, label){
+  return `<div class="stat-card"><div class="num">${num}</div><div class="lbl">${label}</div></div>`;
+}
+
+function recentRow(a){
+  return `
+    <tr>
+      <td><img src="${a.image||''}" alt=""></td>
+      <td class="title-cell"><span class="t">${a.title}</span><span class="s">${WJ.catName(a.category)}</span></td>
+      <td><span class="badge ${a.status}">${a.status==='published'?'Published':'Draft'}</span></td>
+      <td>${WJ.formatDate(a.date)}</td>
+      <td><a class="a-btn secondary sm" href="article-editor.html?id=${a.id}">Edit</a></td>
+    </tr>
+  `;
+}
+
+async function loadDashboard(){
+  const content = document.getElementById("adminContent");
+  content.innerHTML = `<div class="a-card">Loading...</div>`;
+
+  const [articles, epapers] = await Promise.all([WJ.admin.listArticles(), WJ.admin.listEpapers()]);
+  const published = articles.filter(a=>a.status==="published");
+  const drafts = articles.filter(a=>a.status==="draft");
+  const breaking = articles.filter(a=>a.breaking);
+  const totalViews = articles.reduce((s,a)=>s+(a.views||0),0);
+
+  content.innerHTML = `
+    <div class="a-grid cols-4" style="margin-bottom:22px">
+      ${statCard(published.length, "Published Articles")}
+      ${statCard(drafts.length, "Drafts")}
+      ${statCard(breaking.length, "Breaking News")}
+      ${statCard(epapers.length, "E-Paper Editions")}
+    </div>
+
+    <div class="a-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3>Recent Articles</h3>
+        <a class="a-btn" href="article-editor.html">+ Add News Article</a>
+      </div>
+      <table class="a-table">
+        <thead><tr><th></th><th>Title</th><th>Status</th><th>Date</th><th></th></tr></thead>
+        <tbody>
+          ${articles.length ? articles.slice(0,8).map(recentRow).join("") : `<tr class="empty-row"><td colspan="5">No articles yet. Click "Add News Article" to publish your first story.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="a-grid cols-2">
+      <div class="a-card">
+        <h3>Quick Actions</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
+          <a class="a-btn" href="article-editor.html">📰 Write New Article</a>
+          <a class="a-btn secondary" href="epaper.html">🗞️ Upload New E-Paper Edition</a>
+          <a class="a-btn secondary" href="categories.html">🗂️ Manage Categories</a>
+          <a class="a-btn secondary" href="settings.html">⚙️ Site Settings</a>
+        </div>
+      </div>
+      <div class="a-card">
+        <h3>Site Overview</h3>
+        <p style="color:var(--a-ink-soft);font-size:13.5px;line-height:1.8;margin-top:10px;">
+          Total lifetime article views: <b>${totalViews.toLocaleString()}</b><br>
+          ${window.firebaseEnabled
+            ? 'Connected to Firebase — all changes here are live on the public website immediately after publishing.'
+            : 'Running in local demo mode. Data is saved in this browser only. Connect Firebase (assets/js/firebase-config.js) before going live so content is stored centrally and visible to all visitors.'}
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+requireAuth(()=> loadDashboard());
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WEEKLY JANOON | ہفت روزہ جنون — Aapki Awaaz, Aapki Khabar</title>
+<meta name="description" content="ویکلی جنون — سرینگر و کشمیر سے شائع ہونے والا ایک آزاد ہفت روزہ اخبار۔ تازہ ترین خبریں، تجزیے اور ای پیپر۔">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main id="main">
+  <div class="container">
+
+    <div class="home-grid" id="homeGrid">
+      <div class="loading-state">خبریں لوڈ ہو رہی ہیں…</div>
+    </div>
+
+    <div id="categoryBlocks"></div>
+
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<!-- Firebase (compat SDK) — safe to load even before you configure a project -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+async function renderHome(){
+  renderHeader();
+  renderFooter();
+
+  const [featured, latest, editorials] = await Promise.all([
+    WJ.db.getArticles({featured:true, limit:6}),
+    WJ.db.getArticles({limit:6}),
+    WJ.db.getArticles({category:"editorial", limit:5})
+  ]);
+
+  const lead = featured[0] || latest[0];
+  const railItems = (featured.length>1 ? featured.slice(1) : latest.filter(a=>a.id!==lead.id)).slice(0,5);
+
+  const grid = document.getElementById("homeGrid");
+  if (!lead){
+    grid.innerHTML = `<div class="empty-state">ابھی تک کوئی خبر شائع نہیں ہوئی۔ ایڈمن پینل سے پہلی خبر شامل کریں۔</div>`;
+  } else {
+    grid.innerHTML = `
+      <article class="lead-story">
+        ${lead.breaking ? '<span class="badge breaking">بریکنگ نیوز</span>' : ''}
+        <a href="article.html?slug=${lead.slug}"><img src="${lead.image}" alt="${lead.title}"></a>
+        <h1><a href="article.html?slug=${lead.slug}">${lead.title}</a></h1>
+        <div class="story-meta">${storyMetaHtml(lead)}</div>
+        <p class="story-excerpt">${lead.excerpt}</p>
+      </article>
+
+      <aside>
+        <div class="section-head" style="margin-top:0;border-color:var(--maroon)">
+          <h2 style="font-size:20px">تازہ ترین</h2>
+        </div>
+        <ul class="side-list">
+          ${railItems.map(a=>`
+            <li>
+              <img src="${a.image}" alt="${a.title}">
+              <div>
+                <div class="s-title"><a href="article.html?slug=${a.slug}">${a.title}</a></div>
+                <div class="s-date">${WJ.formatDate(a.date)}</div>
+              </div>
+            </li>`).join("")}
+        </ul>
+
+        <div class="rail-box">
+          <h3>اداریہ</h3>
+          <ul>
+            ${editorials.length ? editorials.map(a=>`<li><a href="article.html?slug=${a.slug}">${a.title}</a></li>`).join("") : '<li style="color:var(--ink-soft)">ابھی کوئی اداریہ شائع نہیں ہوا</li>'}
+          </ul>
+        </div>
+
+        <div class="youtube-box">
+          <h3>ہمارا یوٹیوب چینل</h3>
+          <div class="yt-wrap">
+            <a href="https://youtube.com/@weeklyjanoon" target="_blank" rel="noopener">
+              <img src="https://picsum.photos/seed/wjyoutube/400/220" alt="Weekly Janoon YouTube">
+            </a>
+          </div>
+        </div>
+      </aside>
+    `;
+  }
+
+  await renderCategoryBlocks();
+}
+
+async function categoryBlockHtml(catSlug){
+  const items = await WJ.db.getArticles({category:catSlug, limit:5});
+  if (!items.length) return "";
+  const [feature, ...rest] = items;
+  const cols = [rest.slice(0,2), rest.slice(2,4)];
+  return `
+    <div class="cat-block">
+      <div class="section-head">
+        <h2>${WJ.catName(catSlug)}</h2>
+        <a class="section-more" href="category.html?cat=${catSlug}">مزید دیکھیں</a>
+      </div>
+      <div class="cat-grid">
+        <div class="cat-feature">
+          <a href="article.html?slug=${feature.slug}"><img src="${feature.image}" alt="${feature.title}"></a>
+          <h3><a href="article.html?slug=${feature.slug}">${feature.title}</a></h3>
+          <div class="story-meta">${WJ.formatDate(feature.date)}</div>
+        </div>
+        ${cols.map(group=>`
+          <ul class="cat-mini-list">
+            ${group.map(a=>`
+              <li>
+                <a href="article.html?slug=${a.slug}"><img src="${a.image}" alt="${a.title}"></a>
+                <div class="s-title"><a href="article.html?slug=${a.slug}">${a.title}</a></div>
+              </li>`).join("")}
+          </ul>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+async function renderCategoryBlocks(){
+  const order = ["srinagar-kashmir","local","national","politics","sports","business","entertainment","technology","health"];
+  const mount = document.getElementById("categoryBlocks");
+  const blocks = await Promise.all(order.map(categoryBlockHtml));
+  mount.innerHTML = blocks.join("");
+}
+
+renderHome();
+</script>
+</body>
+</html>

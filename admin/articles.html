@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Articles | WEEKLY JANOON Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="../assets/js/firebase-config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin-layout.js"></script>
+<script>
+renderAdminShell("Articles");
+
+let ALL = [];
+
+function row(a){
+  return `
+    <tr>
+      <td><img src="${a.image||''}" alt=""></td>
+      <td class="title-cell">
+        <span class="t">${a.title}</span>
+        <span class="s">${WJ.catName(a.category)} &middot; ${a.author||'News Desk'}</span>
+      </td>
+      <td>
+        <span class="badge ${a.status}">${a.status==='published'?'Published':'Draft'}</span>
+        ${a.breaking ? '<span class="badge breaking" style="margin-inline-start:4px">Breaking</span>' : ''}
+        ${a.featured ? '<span class="badge featured" style="margin-inline-start:4px">Featured</span>' : ''}
+      </td>
+      <td>${WJ.formatDate(a.date)}</td>
+      <td>${a.views||0}</td>
+      <td style="white-space:nowrap;">
+        <a class="a-btn secondary sm" href="article-editor.html?id=${a.id}">Edit</a>
+        <button class="a-btn danger sm" data-del="${a.id}">Delete</button>
+      </td>
+    </tr>
+  `;
+}
+
+function applyFilters(){
+  const cat = document.getElementById("fCategory").value;
+  const status = document.getElementById("fStatus").value;
+  const q = document.getElementById("fSearch").value.trim().toLowerCase();
+  const filtered = ALL.filter(a=>{
+    if (cat && a.category!==cat) return false;
+    if (status && a.status!==status) return false;
+    if (q && !a.title.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = filtered.length
+    ? filtered.map(row).join("")
+    : `<tr class="empty-row"><td colspan="6">No articles match these filters.</td></tr>`;
+
+  tbody.querySelectorAll("[data-del]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if (!confirm("Delete this article permanently? This cannot be undone.")) return;
+      await WJ.admin.deleteArticle(btn.dataset.del);
+      toast("Article deleted.");
+      await load();
+    });
+  });
+}
+
+async function load(){
+  ALL = await WJ.admin.listArticles();
+  applyFilters();
+}
+
+function init(){
+  const content = document.getElementById("adminContent");
+  content.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0">All Articles</h3>
+      <a class="a-btn" href="article-editor.html">+ Add News Article</a>
+    </div>
+    <div class="a-card">
+      <div class="filter-bar">
+        <select id="fCategory"><option value="">All Categories</option>
+          ${WJ.CATEGORIES.map(c=>`<option value="${c.slug}">${c.name}</option>`).join("")}
+        </select>
+        <select id="fStatus">
+          <option value="">All Status</option>
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+        </select>
+        <input type="search" id="fSearch" placeholder="Search by title...">
+      </div>
+      <table class="a-table">
+        <thead><tr><th></th><th>Title</th><th>Status</th><th>Date</th><th>Views</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"><tr class="empty-row"><td colspan="6">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  `;
+  ["fCategory","fStatus"].forEach(id=> document.getElementById(id).addEventListener("change", applyFilters));
+  document.getElementById("fSearch").addEventListener("input", applyFilters);
+  load();
+}
+
+requireAuth(init);
+</script>
+</body>
+</html>

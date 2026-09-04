@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings | WEEKLY JANOON Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="../assets/js/firebase-config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin-layout.js"></script>
+<script>
+renderAdminShell("Settings");
+
+async function init(){
+  const s = await WJ.admin.getSettings();
+  const content = document.getElementById("adminContent");
+  content.innerHTML = `
+    <div class="a-card">
+      <h3>Site Identity</h3>
+      <form id="settingsForm">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Site Name</label>
+            <input type="text" id="sName" value="${s.siteName||''}">
+          </div>
+          <div class="form-row">
+            <label>Tagline (English)</label>
+            <input type="text" id="sTagline" value="${s.tagline||''}">
+          </div>
+        </div>
+        <div class="form-row rtl">
+          <label>Tagline (Urdu)</label>
+          <input type="text" id="sTaglineUr" value="${s.taglineUr||''}">
+        </div>
+
+        <h3 style="margin-top:24px;">Contact Information</h3>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Contact Email</label>
+            <input type="email" id="sEmail" value="${s.contactEmail||''}">
+          </div>
+          <div class="form-row">
+            <label>Contact Phone</label>
+            <input type="text" id="sPhone" value="${s.contactPhone||''}">
+          </div>
+        </div>
+        <div class="form-row rtl">
+          <label>Office Address</label>
+          <input type="text" id="sAddress" value="${s.contactAddress||''}">
+        </div>
+
+        <h3 style="margin-top:24px;">Social Media Links</h3>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Facebook URL</label>
+            <input type="text" id="sFacebook" value="${s.social?.facebook||''}">
+          </div>
+          <div class="form-row">
+            <label>Twitter / X URL</label>
+            <input type="text" id="sTwitter" value="${s.social?.twitter||''}">
+          </div>
+          <div class="form-row">
+            <label>YouTube URL</label>
+            <input type="text" id="sYoutube" value="${s.social?.youtube||''}">
+          </div>
+          <div class="form-row">
+            <label>Instagram URL</label>
+            <input type="text" id="sInstagram" value="${s.social?.instagram||''}">
+          </div>
+        </div>
+
+        <button type="submit" class="a-btn">Save Settings</button>
+      </form>
+    </div>
+
+    <div class="a-card">
+      <h3>Backend Connection</h3>
+      <p style="color:var(--a-ink-soft);font-size:13.5px;line-height:1.8;">
+        Status: ${window.firebaseEnabled
+          ? '<span class="badge published">Firebase Connected</span> — this site is live and all data is stored in Firestore/Storage.'
+          : '<span class="badge draft">Local Demo Mode</span> — data is stored in this browser only (localStorage). To go live, add your Firebase project keys in <code>assets/js/firebase-config.js</code>. See the included README for step-by-step instructions.'}
+      </p>
+    </div>
+  `;
+
+  document.getElementById("settingsForm").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const data = {
+      siteName: document.getElementById("sName").value.trim(),
+      tagline: document.getElementById("sTagline").value.trim(),
+      taglineUr: document.getElementById("sTaglineUr").value.trim(),
+      contactEmail: document.getElementById("sEmail").value.trim(),
+      contactPhone: document.getElementById("sPhone").value.trim(),
+      contactAddress: document.getElementById("sAddress").value.trim(),
+      social: {
+        facebook: document.getElementById("sFacebook").value.trim(),
+        twitter: document.getElementById("sTwitter").value.trim(),
+        youtube: document.getElementById("sYoutube").value.trim(),
+        instagram: document.getElementById("sInstagram").value.trim()
+      }
+    };
+    try{
+      await WJ.admin.saveSettings(data);
+      toast("Settings saved.");
+    }catch(err){
+      toast("Save failed: " + err.message, true);
+    }
+  });
+}
+
+requireAuth(init);
+</script>
+</body>
+</html>

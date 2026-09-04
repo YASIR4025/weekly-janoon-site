@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Paper Management | WEEKLY JANOON Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="../assets/js/firebase-config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin-layout.js"></script>
+<script>
+renderAdminShell("E-Paper Management");
+
+let ALL = [];
+let pendingPages = []; // uploaded page image URLs for the form currently open
+
+function row(ed){
+  return `
+    <tr>
+      <td class="title-cell"><span class="t">${ed.title}</span><span class="s">${ed.pages.length} pages</span></td>
+      <td>${WJ.formatDate(ed.date)}</td>
+      <td style="white-space:nowrap;">
+        <a class="a-btn secondary sm" href="../epaper.html" target="_blank">Preview</a>
+        <button class="a-btn danger sm" data-del="${ed.id}">Delete</button>
+      </td>
+    </tr>
+  `;
+}
+
+function renderTable(){
+  document.getElementById("epTbody").innerHTML = ALL.length
+    ? ALL.map(row).join("")
+    : `<tr class="empty-row"><td colspan="3">No e-paper editions uploaded yet.</td></tr>`;
+
+  document.querySelectorAll("[data-del]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if (!confirm("Delete this e-paper edition permanently?")) return;
+      await WJ.admin.deleteEpaper(btn.dataset.del);
+      toast("Edition deleted.");
+      await load();
+    });
+  });
+}
+
+function renderPagesPreview(){
+  document.getElementById("pagesPreview").innerHTML = pendingPages.map((url,i)=>`
+    <div style="position:relative;">
+      <img src="${url}" style="width:100px;height:140px;object-fit:cover;border:1px solid var(--a-line);border-radius:4px;">
+      <button type="button" data-rm="${i}" style="position:absolute;top:2px;right:2px;background:var(--a-red);color:#fff;border:0;border-radius:50%;width:20px;height:20px;font-size:11px;">✕</button>
+      <div style="text-align:center;font-size:11px;color:var(--a-ink-soft);">Page ${i+1}</div>
+    </div>
+  `).join("");
+  document.querySelectorAll("[data-rm]").forEach(b=>{
+    b.addEventListener("click", ()=>{ pendingPages.splice(parseInt(b.dataset.rm,10),1); renderPagesPreview(); });
+  });
+}
+
+function init(){
+  const content = document.getElementById("adminContent");
+  content.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0">E-Paper Editions</h3>
+    </div>
+
+    <div class="a-card">
+      <h3>Upload New Edition</h3>
+      <form id="epForm">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Edition Title *</label>
+            <input type="text" id="epTitle" required value="ہفتہ وار ایڈیشن" style="direction:rtl;font-family:'Noto Naskh Arabic',serif">
+          </div>
+          <div class="form-row">
+            <label>Edition Date *</label>
+            <input type="date" id="epDate" required value="${new Date().toISOString().slice(0,10)}">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Newspaper Pages (upload page images, in order) *</label>
+          <input type="file" id="epFiles" accept="image/*" multiple>
+          <div id="pagesPreview" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;"></div>
+        </div>
+        <button type="submit" class="a-btn">Publish Edition</button>
+      </form>
+    </div>
+
+    <div class="a-card">
+      <h3>Archive — Previous Editions</h3>
+      <table class="a-table">
+        <thead><tr><th>Edition</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody id="epTbody"><tr class="empty-row"><td colspan="3">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById("epFiles").addEventListener("change", async (e)=>{
+    const files = [...e.target.files];
+    if (!files.length) return;
+    toast(`Uploading ${files.length} page(s)...`);
+    for (const file of files){
+      try{
+        const url = await WJ.admin.uploadImage(file);
+        pendingPages.push(url);
+      }catch(err){ toast("Upload failed: " + err.message, true); }
+    }
+    renderPagesPreview();
+    toast("Pages uploaded.");
+  });
+
+  document.getElementById("epForm").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    if (!pendingPages.length){ toast("Please upload at least one page image.", true); return; }
+    const data = {
+      title: document.getElementById("epTitle").value.trim(),
+      date: document.getElementById("epDate").value,
+      pages: [...pendingPages]
+    };
+    try{
+      await WJ.admin.saveEpaper(data);
+      toast("E-paper edition published.");
+      pendingPages = [];
+      document.getElementById("epForm").reset();
+      renderPagesPreview();
+      await load();
+    }catch(err){
+      toast("Save failed: " + err.message, true);
+    }
+  });
+
+  load();
+}
+
+async function load(){
+  ALL = await WJ.admin.listEpapers();
+  renderTable();
+}
+
+requireAuth(init);
+</script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ہم سے رابطہ کریں | WEEKLY JANOON</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .contact-wrap{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin:26px 0 50px;}
+  .contact-form label{display:block;font-family:'Inter',sans-serif;font-size:13px;color:var(--ink-soft);margin-bottom:6px;}
+  .contact-form input,.contact-form textarea{width:100%;padding:11px;border:1px solid var(--line);background:var(--white);font-family:var(--font-ur-body);font-size:15px;margin-bottom:16px;}
+  .contact-form button{background:var(--maroon);color:#fff;border:0;padding:12px 26px;font-weight:700;font-family:'Inter',sans-serif;}
+  .contact-info li{padding:12px 0;border-bottom:1px solid var(--line);font-size:15px;}
+  .contact-info li b{display:block;font-family:'Inter',sans-serif;font-size:12px;color:var(--ink-soft);margin-bottom:4px;}
+  @media(max-width:760px){.contact-wrap{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main id="main">
+  <div class="container">
+    <p class="breadcrumb"><a href="index.html">صفحہ اوّل</a> / ہم سے رابطہ کریں</p>
+    <div class="section-head" style="margin-top:6px"><h2>ہم سے رابطہ کریں</h2></div>
+
+    <div class="contact-wrap">
+      <form class="contact-form" id="contactForm">
+        <label for="name">نام</label>
+        <input id="name" required>
+        <label for="email">ای میل</label>
+        <input id="email" type="email" required>
+        <label for="msg">پیغام</label>
+        <textarea id="msg" rows="6" required></textarea>
+        <button type="submit">پیغام بھیجیں</button>
+        <p id="formNote" style="font-family:'Inter',sans-serif;font-size:13px;color:var(--teal);margin-top:12px;"></p>
+      </form>
+
+      <div>
+        <ul class="contact-info" id="contactInfo"></ul>
+        <div class="social-follow" id="socialFollow" style="margin-top:20px"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+async function init(){
+  renderHeader();
+  renderFooter();
+  const settings = await WJ.db.getSettings();
+  document.getElementById("contactInfo").innerHTML = `
+    <li><b>پتہ</b>${settings.contactAddress}</li>
+    <li><b>فون</b><span style="direction:ltr;display:inline-block">${settings.contactPhone}</span></li>
+    <li><b>ای میل</b><span style="direction:ltr;display:inline-block">${settings.contactEmail}</span></li>
+  `;
+  document.getElementById("socialFollow").innerHTML = `
+    <a href="${settings.social.facebook}" target="_blank" rel="noopener" style="background:var(--maroon);color:#fff;padding:8px 16px;font-family:Inter,sans-serif;font-size:13px;margin-inline-end:8px;">Facebook</a>
+    <a href="${settings.social.youtube}" target="_blank" rel="noopener" style="background:var(--maroon);color:#fff;padding:8px 16px;font-family:Inter,sans-serif;font-size:13px;">YouTube</a>
+  `;
+
+  document.getElementById("contactForm").addEventListener("submit", (e)=>{
+    e.preventDefault();
+    // No backend endpoint configured yet — this form is wired to mailto as a working default.
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+    const msg = document.getElementById("msg").value;
+    const body = encodeURIComponent(`نام: ${name}\nای میل: ${email}\n\n${msg}`);
+    window.location.href = `mailto:${settings.contactEmail}?subject=${encodeURIComponent("ویب سائٹ سے پیغام")}&body=${body}`;
+    document.getElementById("formNote").textContent = "آپ کا میل ایپ کھل رہا ہے تاکہ آپ پیغام بھیج سکیں۔";
+  });
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تلاش | WEEKLY JANOON</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main id="main">
+  <div class="container">
+    <p class="breadcrumb"><a href="index.html">صفحہ اوّل</a> / تلاش</p>
+    <div class="section-head" style="margin-top:6px"><h2>خبر تلاش کریں</h2></div>
+
+    <form class="search-hero" id="searchForm">
+      <input type="search" name="q" id="searchInput" placeholder="کلیدی الفاظ لکھیں... مثلاً: کشمیر، بجٹ، کھیل" autofocus>
+      <button type="submit">تلاش کریں</button>
+    </form>
+
+    <div class="search-results-count" id="resultsCount"></div>
+    <div class="article-grid" id="resultsGrid"></div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+function cardHtml(a){
+  return `
+    <article class="article-card">
+      <a href="article.html?slug=${a.slug}"><img src="${a.image}" alt="${a.title}"></a>
+      <div class="card-body">
+        <div class="card-cat">${WJ.catName(a.category)}</div>
+        <h3><a href="article.html?slug=${a.slug}">${a.title}</a></h3>
+        <div class="story-meta">${WJ.formatDate(a.date)}</div>
+        <p class="story-excerpt">${a.excerpt||""}</p>
+      </div>
+    </article>
+  `;
+}
+
+async function runSearch(q){
+  document.getElementById("resultsCount").textContent = q ? `"${q}" کے لیے تلاش جاری ہے…` : "";
+  const results = q ? await WJ.db.searchArticles(q) : [];
+  const grid = document.getElementById("resultsGrid");
+  if (!q){
+    document.getElementById("resultsCount").textContent = "";
+    grid.innerHTML = "";
+    return;
+  }
+  document.getElementById("resultsCount").textContent = `"${q}" کے لیے ${results.length} نتائج ملے`;
+  grid.innerHTML = results.length ? results.map(cardHtml).join("") : `<div class="empty-state">کوئی خبر نہیں ملی۔ دوسرے الفاظ کے ساتھ دوبارہ کوشش کریں۔</div>`;
+}
+
+function init(){
+  renderHeader();
+  renderFooter();
+  const params = new URLSearchParams(location.search);
+  const q = params.get("q") || "";
+  document.getElementById("searchInput").value = q;
+  runSearch(q);
+
+  document.getElementById("searchForm").addEventListener("submit", (e)=>{
+    e.preventDefault();
+    const val = document.getElementById("searchInput").value.trim();
+    history.replaceState(null, "", `search.html?q=${encodeURIComponent(val)}`);
+    runSearch(val);
+  });
+}
+init();
+</script>
+</body>
+</html>

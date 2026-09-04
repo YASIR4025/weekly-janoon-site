@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">زمرہ | WEEKLY JANOON</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main id="main">
+  <div class="container">
+    <p class="breadcrumb"><a href="index.html">صفحہ اوّل</a> / <span id="crumbCat">زمرہ</span></p>
+    <div class="section-head" style="margin-top:6px">
+      <h2 id="catTitle">زمرہ</h2>
+    </div>
+
+    <div class="article-grid" id="articleGrid">
+      <div class="loading-state">خبریں لوڈ ہو رہی ہیں…</div>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+const PAGE_SIZE = 9;
+let currentPage = 1;
+let allItems = [];
+
+function cardHtml(a){
+  return `
+    <article class="article-card">
+      <a href="article.html?slug=${a.slug}"><img src="${a.image}" alt="${a.title}"></a>
+      <div class="card-body">
+        <div class="card-cat">${WJ.catName(a.category)}</div>
+        <h3><a href="article.html?slug=${a.slug}">${a.title}</a></h3>
+        <div class="story-meta">${WJ.formatDate(a.date)}</div>
+        <p class="story-excerpt">${a.excerpt||""}</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderPage(){
+  const grid = document.getElementById("articleGrid");
+  const start = (currentPage-1)*PAGE_SIZE;
+  const items = allItems.slice(start, start+PAGE_SIZE);
+  if (!items.length){
+    grid.innerHTML = `<div class="empty-state">اس زمرے میں ابھی تک کوئی خبر شائع نہیں ہوئی۔</div>`;
+  } else {
+    grid.innerHTML = items.map(cardHtml).join("");
+  }
+  renderPagination();
+}
+
+function renderPagination(){
+  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
+  const pag = document.getElementById("pagination");
+  if (totalPages<=1){ pag.innerHTML=""; return; }
+  let html = `<button ${currentPage===1?"disabled":""} data-p="${currentPage-1}">&larr; پچھلا</button>`;
+  for (let i=1;i<=totalPages;i++){
+    html += `<button class="${i===currentPage?"active":""}" data-p="${i}">${i}</button>`;
+  }
+  html += `<button ${currentPage===totalPages?"disabled":""} data-p="${currentPage+1}">اگلا &rarr;</button>`;
+  pag.innerHTML = html;
+  pag.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      currentPage = parseInt(btn.dataset.p,10);
+      renderPage();
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
+  });
+}
+
+async function init(){
+  const params = new URLSearchParams(location.search);
+  const cat = params.get("cat") || "hot-news";
+  renderHeader(cat);
+  renderFooter();
+
+  const name = WJ.catName(cat);
+  document.getElementById("pageTitle").textContent = `${name} | WEEKLY JANOON`;
+  document.getElementById("catTitle").textContent = name;
+  document.getElementById("crumbCat").textContent = name;
+
+  allItems = await WJ.db.getArticles({category:cat});
+  renderPage();
+}
+init();
+</script>
+</body>
+</html>
