@@ -38,10 +38,7 @@ async function renderHeader(activeSlug){
         <div style="width:110px" class="hide-mobile"></div>
         <a href="index.html" class="brand" style="justify-content:center;flex:1;">
           <div class="brand-text">
-           <div class="brand-title-wrap" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-  <span style="font-size:24px; font-weight:bold;">WEEKLY JANOON</span>
-  <span style="font-size:36px; font-family:'Noto Nastaliq Urdu', serif;">جنون</span>
-</div>
+         <span style="font-size:36px; font-weight:bold; color:var(--maroon); display:block; text-align:center;">WEEKLY JANOON</span>
             <div class="brand-tagline">${settings.taglineUr} <span style="opacity:.6">— ${settings.tagline}</span></div>
           </div>
         </a>
@@ -97,10 +94,7 @@ async function renderFooter(){
       <div class="footer-top container">
         <div class="footer-grid">
           <div class="footer-col footer-brand">
-           <div class="brand-title-wrap" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-  <span style="font-size:24px; font-weight:bold;">WEEKLY JANOON</span>
-  <span style="font-size:36px; font-family:'Noto Nastaliq Urdu', serif;">جنون</span>
-</div>
+          <span style="font-size:24px; font-weight:bold; color:#fff; display:block; text-align:center;">WEEKLY JANOON</span>
             <p>${settings.taglineUr} — ${settings.tagline}. سرینگر سے شائع ہونے والا ایک آزاد ہفت روزہ اخبار، تازہ ترین اور معتبر خبریں فراہم کرنے کے عزم کے ساتھ۔</p>
             <div class="footer-social">
               <a href="${settings.social.facebook}" target="_blank" rel="noopener">f</a>

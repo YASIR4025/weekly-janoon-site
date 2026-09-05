@@ -49,7 +49,7 @@
   --font-ur-head: 'Noto Nastaliq Urdu', serif;
   --font-ur-body: 'Noto Naskh Arabic', serif;
   --font-latin: Georgia, 'Times New Roman', serif;
---maxw: 100%;
+--maxw: 100%
 }
 
 *{box-sizing:border-box;}
