@@ -288,3 +288,32 @@ button{font-family:inherit;cursor:pointer;}
   .article-detail h1{font-size:24px;}
   .lead-story h1{font-size:24px;}
 }
+/* ---------- overall text size increase ---------- */
+body{font-size:16px;}
+.nav-list > li > a{font-size:17.5px !important;}
+.sub-menu li a{font-size:16px !important;}
+.ticker-track li a{font-size:16px !important;}
+.ticker-tag{font-size:14px !important;}
+.side-list .s-title{font-size:16.5px !important;}
+.side-list .s-date{font-size:13px !important;}
+.rail-box ul li{font-size:16px !important;}
+.section-head h2{font-size:26px !important;}
+.cat-feature h3{font-size:22px !important;}
+.cat-mini-list .s-title{font-size:16.5px !important;}
+.article-card h3{font-size:18.5px !important;}
+.article-card .story-excerpt{font-size:15.5px !important;}
+.article-card .card-cat{font-size:13.5px !important;}
+.article-body{font-size:19.5px !important;}
+.article-detail h1{font-size:34px !important;}
+.article-detail .story-meta{font-size:14.5px !important;}
+.lead-story h1{font-size:32px !important;}
+.lead-story .story-excerpt{font-size:16px !important;}
+.footer-col ul li{font-size:15px !important;}
+.footer-brand p{font-size:15px !important;}
+.masthead-edition{font-size:14px !important;}
+.masthead-search input{font-size:15px !important;}
+.search-hero input{font-size:17px !important;}
+.badge{font-size:12.5px !important;}
+.brand-tagline{font-size:16px !important;}
+.topbar{font-size:14px !important;}
+.breadcrumb{font-size:14px !important;}
