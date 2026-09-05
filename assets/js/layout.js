@@ -46,7 +46,7 @@ async function renderHeader(activeSlug){
         <div style="width:110px" class="hide-mobile"></div>
         <a href="index.html" class="brand" style="justify-content:center;flex:1;">
           <div class="brand-text">
-         <span style="font-size:36px; font-weight:bold; color:var(--maroon); display:block; text-align:center;">WEEKLY JANOON</span>
+        <span style="font-size:60px; font-weight:bold; color:var(--maroon); display:block; text-align:center; letter-spacing:1px;">WEEKLY JANOON</span>
             <div class="brand-tagline">${settings.taglineUr} <span style="opacity:.6">— ${settings.tagline}</span></div>
           </div>
         </a>
