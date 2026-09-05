@@ -70,7 +70,7 @@ ul{margin:0;padding:0;list-style:none;}
 h1,h2,h3,h4,h5,h6{font-family:var(--font-ur-head);margin:0 0 .4em;line-height:1.5;font-weight:700;}
 p{margin:0 0 1em;}
 button{font-family:inherit;cursor:pointer;}
-.container{max-width:var(--maxw);margin:0 auto;padding:0 32px;}
+.container{max-width:var(--maxw);margin:0 auto;padding:0;}
 :focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
 
 /* ---------- skip link ---------- */
