@@ -15,6 +15,8 @@
 <main id="main">
   <div class="container">
 
+    <div id="epaperHome"></div>
+
     <div class="home-grid" id="homeGrid">
       <div class="loading-state">خبریں لوڈ ہو رہی ہیں…</div>
     </div>
@@ -26,7 +28,6 @@
 
 <div id="site-footer"></div>
 
-<!-- Firebase (compat SDK) — safe to load even before you configure a project -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -36,104 +37,159 @@
 <script src="assets/js/data.js"></script>
 <script src="assets/js/layout.js"></script>
 <script>
+function isPdf(url){
+  var s = String(url || "");
+  try { s = decodeURIComponent(s); } catch(e) {}
+  return /\.pdf($|\?|#)/i.test(s);
+}
+
+async function renderEpaperHome(){
+  var mount = document.getElementById("epaperHome");
+  var list = [];
+  try { list = await WJ.db.getEpapers(); } catch(e) { list = []; }
+  if (!list.length){ mount.innerHTML = ""; return; }
+  var ed = list[0];
+  var pages = ed.pages || [];
+  if (!pages.length){ mount.innerHTML = ""; return; }
+  var first = pages[0];
+  var pdf = isPdf(first);
+
+  var preview = pdf
+    ? '<iframe src="' + first + '#toolbar=0&navpanes=0&view=FitH" title="ای پیپر" style="display:block;width:100%;height:100%;border:0;background:#fff;"></iframe>'
+    : '<a href="epaper.html" style="display:block;height:100%;"><img src="' + first + '" alt="' + ed.title + '" style="width:100%;height:100%;object-fit:cover;object-position:top;"></a>';
+
+  var pdfBtn = pdf
+    ? '<a href="' + first + '" target="_blank" rel="noopener" style="display:inline-block;border:1px solid var(--maroon);color:var(--maroon);padding:10px 20px;font-size:14px;text-align:center;">PDF الگ ٹیب میں کھولیں</a>'
+    : '';
+
+  mount.innerHTML =
+    '<div class="section-head">' +
+      '<h2>تازہ ای پیپر</h2>' +
+      '<a class="section-more" href="epaper.html">پرانے شمارے</a>' +
+    '</div>' +
+    '<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:stretch;">' +
+      '<div style="flex:1 1 380px;min-width:280px;height:460px;border:1px solid var(--line);background:#fff;overflow:hidden;">' + preview + '</div>' +
+      '<div style="flex:1 1 260px;display:flex;flex-direction:column;justify-content:center;gap:12px;">' +
+        '<h3 style="margin:0;font-size:24px;">' + ed.title + '</h3>' +
+        '<div style="color:var(--ink-soft);font-size:14px;">' + WJ.formatDate(ed.date) + '</div>' +
+        '<a href="epaper.html" style="display:inline-block;background:var(--maroon);color:#fff;padding:10px 20px;font-size:14px;text-align:center;">پورا ای پیپر دیکھیں</a>' +
+        pdfBtn +
+      '</div>' +
+    '</div>';
+}
+
 async function renderHome(){
   renderHeader();
   renderFooter();
+  renderEpaperHome();
 
-  const [featured, latest, editorials] = await Promise.all([
+  var results = await Promise.all([
     WJ.db.getArticles({featured:true, limit:6}),
     WJ.db.getArticles({limit:6}),
     WJ.db.getArticles({category:"editorial", limit:5})
   ]);
+  var featured = results[0];
+  var latest = results[1];
+  var editorials = results[2];
 
-  const lead = featured[0] || latest[0];
-  const railItems = (featured.length>1 ? featured.slice(1) : latest.filter(a=>a.id!==lead.id)).slice(0,5);
+  var lead = featured[0] || latest[0];
+  var railItems = [];
+  if (lead){
+    railItems = (featured.length > 1
+      ? featured.slice(1)
+      : latest.filter(function(a){ return a.id !== lead.id; })
+    ).slice(0, 5);
+  }
 
-  const grid = document.getElementById("homeGrid");
+  var grid = document.getElementById("homeGrid");
   if (!lead){
-    grid.innerHTML = `<div class="empty-state">ابھی تک کوئی خبر شائع نہیں ہوئی۔ ایڈمن پینل سے پہلی خبر شامل کریں۔</div>`;
+    grid.innerHTML = '<div class="empty-state">ابھی تک کوئی خبر شائع نہیں ہوئی۔ ایڈمن پینل سے پہلی خبر شامل کریں۔</div>';
   } else {
-    grid.innerHTML = `
-      <article class="lead-story">
-        ${lead.breaking ? '<span class="badge breaking">بریکنگ نیوز</span>' : ''}
-        <a href="article.html?slug=${lead.slug}"><img src="${lead.image}" alt="${lead.title}"></a>
-        <h1><a href="article.html?slug=${lead.slug}">${lead.title}</a></h1>
-        <div class="story-meta">${storyMetaHtml(lead)}</div>
-        <p class="story-excerpt">${lead.excerpt}</p>
-      </article>
+    var railHtml = railItems.map(function(a){
+      return '<li>' +
+        '<img src="' + a.image + '" alt="' + a.title + '">' +
+        '<div>' +
+          '<div class="s-title"><a href="article.html?slug=' + a.slug + '">' + a.title + '</a></div>' +
+          '<div class="s-date">' + WJ.formatDate(a.date) + '</div>' +
+        '</div>' +
+      '</li>';
+    }).join("");
 
-      <aside>
-        <div class="section-head" style="margin-top:0;border-color:var(--maroon)">
-          <h2 style="font-size:20px">تازہ ترین</h2>
-        </div>
-        <ul class="side-list">
-          ${railItems.map(a=>`
-            <li>
-              <img src="${a.image}" alt="${a.title}">
-              <div>
-                <div class="s-title"><a href="article.html?slug=${a.slug}">${a.title}</a></div>
-                <div class="s-date">${WJ.formatDate(a.date)}</div>
-              </div>
-            </li>`).join("")}
-        </ul>
+    var editorialHtml = editorials.length
+      ? editorials.map(function(a){
+          return '<li><a href="article.html?slug=' + a.slug + '">' + a.title + '</a></li>';
+        }).join("")
+      : '<li style="color:var(--ink-soft)">ابھی کوئی اداریہ شائع نہیں ہوا</li>';
 
-        <div class="rail-box">
-          <h3>اداریہ</h3>
-          <ul>
-            ${editorials.length ? editorials.map(a=>`<li><a href="article.html?slug=${a.slug}">${a.title}</a></li>`).join("") : '<li style="color:var(--ink-soft)">ابھی کوئی اداریہ شائع نہیں ہوا</li>'}
-          </ul>
-        </div>
-
-        <div class="youtube-box">
-          <h3>ہمارا یوٹیوب چینل</h3>
-          <div class="yt-wrap">
-            <a href="https://youtube.com/@weeklyjanoon" target="_blank" rel="noopener">
-              <img src="https://picsum.photos/seed/wjyoutube/400/220" alt="Weekly Janoon YouTube">
-            </a>
-          </div>
-        </div>
-      </aside>
-    `;
+    grid.innerHTML =
+      '<article class="lead-story">' +
+        (lead.breaking ? '<span class="badge breaking">بریکنگ نیوز</span>' : '') +
+        '<a href="article.html?slug=' + lead.slug + '"><img src="' + lead.image + '" alt="' + lead.title + '"></a>' +
+        '<h1><a href="article.html?slug=' + lead.slug + '">' + lead.title + '</a></h1>' +
+        '<div class="story-meta">' + storyMetaHtml(lead) + '</div>' +
+        '<p class="story-excerpt">' + lead.excerpt + '</p>' +
+      '</article>' +
+      '<aside>' +
+        '<div class="section-head" style="margin-top:0;border-color:var(--maroon)">' +
+          '<h2 style="font-size:20px">تازہ ترین</h2>' +
+        '</div>' +
+        '<ul class="side-list">' + railHtml + '</ul>' +
+        '<div class="rail-box">' +
+          '<h3>اداریہ</h3>' +
+          '<ul>' + editorialHtml + '</ul>' +
+        '</div>' +
+        '<div class="youtube-box">' +
+          '<h3>ہمارا یوٹیوب چینل</h3>' +
+          '<div class="yt-wrap">' +
+            '<a href="https://youtube.com/@weeklyjanoon" target="_blank" rel="noopener">' +
+              '<img src="https://picsum.photos/seed/wjyoutube/400/220" alt="Weekly Janoon YouTube">' +
+            '</a>' +
+          '</div>' +
+        '</div>' +
+      '</aside>';
   }
 
   await renderCategoryBlocks();
 }
 
 async function categoryBlockHtml(catSlug){
-  const items = await WJ.db.getArticles({category:catSlug, limit:5});
+  var items = await WJ.db.getArticles({category:catSlug, limit:5});
   if (!items.length) return "";
-  const [feature, ...rest] = items;
-  const cols = [rest.slice(0,2), rest.slice(2,4)];
-  return `
-    <div class="cat-block">
-      <div class="section-head">
-        <h2>${WJ.catName(catSlug)}</h2>
-        <a class="section-more" href="category.html?cat=${catSlug}">مزید دیکھیں</a>
-      </div>
-      <div class="cat-grid">
-        <div class="cat-feature">
-          <a href="article.html?slug=${feature.slug}"><img src="${feature.image}" alt="${feature.title}"></a>
-          <h3><a href="article.html?slug=${feature.slug}">${feature.title}</a></h3>
-          <div class="story-meta">${WJ.formatDate(feature.date)}</div>
-        </div>
-        ${cols.map(group=>`
-          <ul class="cat-mini-list">
-            ${group.map(a=>`
-              <li>
-                <a href="article.html?slug=${a.slug}"><img src="${a.image}" alt="${a.title}"></a>
-                <div class="s-title"><a href="article.html?slug=${a.slug}">${a.title}</a></div>
-              </li>`).join("")}
-          </ul>
-        `).join("")}
-      </div>
-    </div>
-  `;
+  var feature = items[0];
+  var rest = items.slice(1);
+  var cols = [rest.slice(0, 2), rest.slice(2, 4)];
+
+  var colsHtml = cols.map(function(group){
+    return '<ul class="cat-mini-list">' +
+      group.map(function(a){
+        return '<li>' +
+          '<a href="article.html?slug=' + a.slug + '"><img src="' + a.image + '" alt="' + a.title + '"></a>' +
+          '<div class="s-title"><a href="article.html?slug=' + a.slug + '">' + a.title + '</a></div>' +
+        '</li>';
+      }).join("") +
+    '</ul>';
+  }).join("");
+
+  return '<div class="cat-block">' +
+    '<div class="section-head">' +
+      '<h2>' + WJ.catName(catSlug) + '</h2>' +
+      '<a class="section-more" href="category.html?cat=' + catSlug + '">مزید دیکھیں</a>' +
+    '</div>' +
+    '<div class="cat-grid">' +
+      '<div class="cat-feature">' +
+        '<a href="article.html?slug=' + feature.slug + '"><img src="' + feature.image + '" alt="' + feature.title + '"></a>' +
+        '<h3><a href="article.html?slug=' + feature.slug + '">' + feature.title + '</a></h3>' +
+        '<div class="story-meta">' + WJ.formatDate(feature.date) + '</div>' +
+      '</div>' +
+      colsHtml +
+    '</div>' +
+  '</div>';
 }
 
 async function renderCategoryBlocks(){
-  const order = ["srinagar-kashmir","local","national","politics","sports","business","entertainment","technology","health"];
-  const mount = document.getElementById("categoryBlocks");
-  const blocks = await Promise.all(order.map(categoryBlockHtml));
+  var order = ["srinagar-kashmir","local","national","politics","sports","business","entertainment","technology","health"];
+  var mount = document.getElementById("categoryBlocks");
+  var blocks = await Promise.all(order.map(function(slug){ return categoryBlockHtml(slug); }));
   mount.innerHTML = blocks.join("");
 }
 
