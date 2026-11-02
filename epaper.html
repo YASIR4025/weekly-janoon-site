@@ -40,66 +40,105 @@
 <script src="assets/js/data.js"></script>
 <script src="assets/js/layout.js"></script>
 <script>
-let epapers = [];
-let currentEdition = 0;
-let currentPage = 0;
+var epapers = [];
+var currentEdition = 0;
+var currentPage = 0;
+
+function isPdf(url){
+  var s = String(url || "");
+  try { s = decodeURIComponent(s); } catch(e) {}
+  return /\.pdf($|\?|#)/i.test(s);
+}
+
+function pagesLabel(e){
+  var pages = e.pages || [];
+  if (pages.length === 1 && isPdf(pages[0])) return "PDF";
+  return pages.length + " صفحات";
+}
 
 function renderViewer(){
-  const hero = document.getElementById("epaperHero");
+  var hero = document.getElementById("epaperHero");
   if (!epapers.length){
-    hero.innerHTML = `<div class="empty-state" style="width:100%">ابھی تک کوئی ای پیپر شائع نہیں ہوا۔</div>`;
+    hero.innerHTML = '<div class="empty-state" style="width:100%">ابھی تک کوئی ای پیپر شائع نہیں ہوا۔</div>';
     return;
   }
-  const ed = epapers[currentEdition];
-  const totalPages = ed.pages.length;
-  hero.innerHTML = `
-    <div class="epaper-viewer">
-      <div class="page-frame" style="background-image:url('${ed.pages[currentPage]}')"></div>
-      <div class="epaper-nav">
-        <button id="prevPage" ${currentPage===0?"disabled":""}>&rarr; پچھلا صفحہ</button>
-        <span>صفحہ ${currentPage+1} / ${totalPages}</span>
-        <button id="nextPage" ${currentPage===totalPages-1?"disabled":""}>اگلا صفحہ &larr;</button>
-      </div>
-      <p style="margin-top:14px;font-family:'Inter',sans-serif;font-size:12.5px;color:var(--ink-soft)">
-        شمارہ: ${ed.title} — ${WJ.formatDate(ed.date)}
-      </p>
-      <a href="${ed.pages[currentPage]}" download class="btn" style="display:inline-block;margin-top:10px;background:var(--maroon);color:#fff;padding:8px 18px;font-family:'Inter',sans-serif;font-size:13px;">صفحہ ڈاؤن لوڈ کریں</a>
-    </div>
-    <div class="epaper-side">
-      <h3>ایڈیشن منتخب کریں</h3>
-      <ul class="epaper-archive-list" id="editionList"></ul>
-    </div>
-  `;
-  document.getElementById("prevPage").addEventListener("click", ()=>{ currentPage=Math.max(0,currentPage-1); renderViewer(); });
-  document.getElementById("nextPage").addEventListener("click", ()=>{ currentPage=Math.min(totalPages-1,currentPage+1); renderViewer(); });
+  var ed = epapers[currentEdition];
+  var pages = ed.pages || [];
+  var totalPages = pages.length;
+  if (!totalPages){
+    hero.innerHTML = '<div class="empty-state" style="width:100%">اس شمارے میں کوئی صفحہ موجود نہیں۔</div>';
+    return;
+  }
+  if (currentPage > totalPages - 1) currentPage = 0;
 
-  const editionList = document.getElementById("editionList");
-  editionList.innerHTML = epapers.map((e,i)=>`
-    <li>
-      <span>${e.title} — ${WJ.formatDate(e.date)}</span>
-      <button class="dl" style="background:none;border:1px solid var(--maroon);color:var(--maroon);padding:4px 10px;font-family:'Inter',sans-serif;font-size:12px;" data-i="${i}">دیکھیں</button>
-    </li>
-  `).join("");
-  editionList.querySelectorAll("button").forEach(b=>{
-    b.addEventListener("click", ()=>{ currentEdition=parseInt(b.dataset.i,10); currentPage=0; renderViewer(); });
+  var url = pages[currentPage];
+  var pdf = isPdf(url);
+  var frame = "";
+  if (pdf){
+    frame = '<iframe src="' + url + '#view=FitH" title="ای پیپر" style="display:block;width:100%;height:80vh;min-height:480px;border:1px solid var(--line);background:#fff;margin-bottom:12px;"></iframe>';
+  } else {
+    frame = '<div class="page-frame" style="background-image:url(\'' + url + '\')"></div>';
+  }
+
+  var nav = "";
+  if (totalPages > 1){
+    nav = '<div class="epaper-nav">' +
+      '<button id="prevPage"' + (currentPage === 0 ? ' disabled' : '') + '>&rarr; پچھلا صفحہ</button>' +
+      '<span>صفحہ ' + (currentPage + 1) + ' / ' + totalPages + '</span>' +
+      '<button id="nextPage"' + (currentPage === totalPages - 1 ? ' disabled' : '') + '>اگلا صفحہ &larr;</button>' +
+      '</div>';
+  }
+
+  var btnText = pdf ? "PDF الگ ٹیب میں کھولیں / ڈاؤن لوڈ کریں" : "صفحہ کھولیں / ڈاؤن لوڈ کریں";
+
+  hero.innerHTML =
+    '<div class="epaper-viewer">' +
+      frame +
+      nav +
+      '<p style="margin-top:14px;font-size:12.5px;color:var(--ink-soft)">شمارہ: ' + ed.title + ' — ' + WJ.formatDate(ed.date) + '</p>' +
+      '<a href="' + url + '" target="_blank" rel="noopener" class="btn" style="display:inline-block;margin-top:10px;background:var(--maroon);color:#fff;padding:8px 18px;font-size:13px;">' + btnText + '</a>' +
+    '</div>' +
+    '<div class="epaper-side">' +
+      '<h3>ایڈیشن منتخب کریں</h3>' +
+      '<ul class="epaper-archive-list" id="editionList"></ul>' +
+    '</div>';
+
+  var prev = document.getElementById("prevPage");
+  if (prev) prev.addEventListener("click", function(){ currentPage = Math.max(0, currentPage - 1); renderViewer(); });
+  var next = document.getElementById("nextPage");
+  if (next) next.addEventListener("click", function(){ currentPage = Math.min(totalPages - 1, currentPage + 1); renderViewer(); });
+
+  var editionList = document.getElementById("editionList");
+  editionList.innerHTML = epapers.map(function(e, i){
+    return '<li>' +
+      '<span>' + e.title + ' — ' + WJ.formatDate(e.date) + '</span>' +
+      '<button class="dl" style="background:none;border:1px solid var(--maroon);color:var(--maroon);padding:4px 10px;font-size:12px;" data-i="' + i + '">دیکھیں</button>' +
+    '</li>';
+  }).join("");
+  editionList.querySelectorAll("button").forEach(function(b){
+    b.addEventListener("click", function(){
+      currentEdition = parseInt(b.dataset.i, 10);
+      currentPage = 0;
+      renderViewer();
+    });
   });
 }
 
 function renderArchive(){
-  const list = document.getElementById("archiveList");
-  list.innerHTML = epapers.map((e,i)=>`
-    <li>
-      <span>📰 ${e.title} — ${WJ.formatDate(e.date)} (${e.pages.length} صفحات)</span>
-      <a class="dl" href="#" data-i="${i}">پورا ایڈیشن دیکھیں</a>
-    </li>
-  `).join("");
-  list.querySelectorAll("a.dl").forEach(a=>{
-    a.addEventListener("click", (ev)=>{
+  var list = document.getElementById("archiveList");
+  list.innerHTML = epapers.map(function(e, i){
+    return '<li>' +
+      '<span>📰 ' + e.title + ' — ' + WJ.formatDate(e.date) + ' (' + pagesLabel(e) + ')</span>' +
+      '<a class="dl" href="#" data-i="' + i + '">پورا ایڈیشن دیکھیں</a>' +
+    '</li>';
+  }).join("");
+  list.querySelectorAll("a.dl").forEach(function(a){
+    a.addEventListener("click", function(ev){
       ev.preventDefault();
-      currentEdition = parseInt(a.dataset.i,10);
+      currentEdition = parseInt(a.dataset.i, 10);
       currentPage = 0;
       renderViewer();
-      window.scrollTo({top:0, behavior:"smooth"});
+      window.scrollTo({top: 0, behavior: "smooth"});
     });
   });
 }
